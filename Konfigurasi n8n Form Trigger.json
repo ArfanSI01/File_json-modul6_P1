@@ -1,0 +1,107 @@
+{
+  "name": "Konfigurasi n8n Form Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Pendaftaran SIB Mandiri NF Academy Batch 4",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nama"
+            },
+            {
+              "fieldLabel": "Email"
+            },
+            {
+              "fieldLabel": "Kelas",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "AI For Business"
+                  },
+                  {
+                    "option": "Codelles Data Science"
+                  },
+                  {
+                    "option": "DevOps Engineer"
+                  },
+                  {
+                    "option": "Digital Marketing"
+                  },
+                  {
+                    "option": "Fullstack Developer"
+                  },
+                  {
+                    "option": "Mobile Apps Developer"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e1b24c54-c3d3-4ac5-8943-2169c494595d",
+      "name": "On form submission",
+      "webhookId": "1c6254b8-37fb-48f5-9163-32356f429e05"
+    },
+    {
+      "parameters": {
+        "fromEmail": "arfa23162si@student.nurulfikri.ac.id",
+        "toEmail": "={{$json.Email}}",
+        "subject": "=Informasi Pendaftaran SIB Mandiri NF Academy Batch 5",
+        "html": "=<div style=\"font-family: sans-serif;\">\n  <h3>Halo <strong>{{ $json.Nama }}</strong>,</h3>\n  <p>Terima kasih sudah mendaftar! Data kamu sudah kami terima dengan rincian:</p>\n  <ul>\n    <li><strong>Email:</strong> {{ $json.Email }}</li>\n    <li><strong>Kelas:</strong> {{ $json.Kelas }}</li>\n  </ul>\n  <p>Sampai jumpa di sesi berikutnya!</p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "725fc215-8fab-4ad7-822f-edd94015ec2b",
+      "name": "Send an Email",
+      "webhookId": "59c5e495-c0d7-45c4-9fed-3a8b440cbbff",
+      "credentials": {
+        "smtp": {
+          "id": "GXTfh3g2NzNSLvkb",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9820ff2f-a319-4707-952c-ff8789242455",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4ab2e820f183119a1cff325c1627456cb8157705ca3c559ce30aafaab9ef8286"
+  },
+  "id": "Xif001r69QFUY1Oo",
+  "tags": []
+}
