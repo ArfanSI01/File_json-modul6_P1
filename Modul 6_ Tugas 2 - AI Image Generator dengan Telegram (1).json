@@ -1,0 +1,345 @@
+{
+  "name": "Modul 6: Tugas 2 - AI Image Generator dengan Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Image Generator - NF Academy",
+        "formDescription": "Masukkan prompt untuk generate gambar AI menggunakan Kie AI",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "prompt",
+              "fieldType": "textarea",
+              "placeholder": "Contoh: A beautiful sunset over the mountains, photorealistic, 4K",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "task_type"
+            },
+            {
+              "fieldLabel": "api_key",
+              "fieldType": "password",
+              "placeholder": "Masukkan API Key Kie AI kamu",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d07c5ec2-d71b-42c1-97a8-153abe37fb96",
+      "name": "Submit Text Prompt untuk Generate Gambar",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        128
+      ],
+      "webhookId": "79b0906f-030a-4e3c-9ea1-7bb8e89ee2a8",
+      "notes": "Langkah 1: Node Form sebagai pemicu awal. Pengguna mengisi prompt dan api_key melalui URL form yang digenerate n8n. Data ini digunakan di seluruh alur kerja."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"grok-imagine/text-to-image\",\n  \"callBackUrl\": \"https://api.kie.ai/api/v1/jobs/createTask\",\n  \"input\": {\n    \"prompt\": \"{{ $json.prompt }}\",\n    \"aspect_ratio\": \"3:2\"\n  }\n}",
+        "options": {}
+      },
+      "id": "72d509c4-4552-4982-8e79-45d6136857fa",
+      "name": "Mengirim Image Generation Request ke Kie AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -944,
+        128
+      ],
+      "notes": "Langkah 2: HTTP POST ke endpoint https://api.kie.ai/api/v1/jobs/createTask. Header Authorization menggunakan api_key dari form. Respons berisi taskId untuk polling."
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "id": "42b65aae-022a-4f56-9d2a-75e4983b8ef9",
+      "name": "Menunggu Proses Generate Gambar",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -704,
+        128
+      ],
+      "webhookId": "wait-10-detik-polling",
+      "notes": "Langkah 3 (bagian polling loop): Memberikan jeda 10 detik agar server AI memiliki waktu memproses permintaan sebelum dicek statusnya kembali."
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.data.taskId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Submit Text Prompt untuk Generate Gambar').item.json.api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "34695cfe-9ebf-4ff9-ac36-6bc898c3c663",
+      "name": "Mendapatkan Status Generate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -464,
+        128
+      ],
+      "notes": "Langkah 3 (bagian polling loop): HTTP GET ke endpoint recordInfo untuk mengecek status tugas menggunakan taskId dari respons POST awal. api_key diambil dari node form pemicu."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-state-success",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8987e71d-5920-47c9-8570-e2e40807dcd4",
+      "name": "Check Jika Generate Sudah Selesai",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        128
+      ],
+      "notes": "Langkah 4: Gerbang logika yang memeriksa apakah field 'state' dalam data respons sama dengan 'success'. TRUE → lanjut ke ekstraksi URL. FALSE → kembali ke Wait (polling loop ulang)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format Result - Kode dari materi NF Academy\n// Parsing string JSON dan mengekstrak URL gambar dari resultUrls\n\nconst result = JSON.parse($json.data.resultJson);\n\nreturn [{\n  img1: result.resultUrls[0] || null,\n  img2: result.resultUrls[1] || null,\n  img3: result.resultUrls[2] || null,\n  img4: result.resultUrls[3] || null\n}];\n"
+      },
+      "id": "64770d3a-c721-4fa1-8769-f0856314c01f",
+      "name": "Format Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Langkah 5: Code Node JavaScript. Mem-parsing field resultJson (berupa string JSON) dari respons API menjadi objek. Mengekstrak hingga 4 URL gambar dari array resultUrls."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop Image - Kode dari materi NF Academy\n// Menyiapkan data URL gambar untuk diproses satu per satu\n\nconst urls = [\n  $json.img1,\n  $json.img2,\n  $json.img3,\n  $json.img4\n].filter(Boolean);\n\n// jadikan 1 URL = 1 item\nreturn urls.map((url, index) => ({\n  json: {\n    url,\n    index: index + 1\n  }\n}));\n"
+      },
+      "id": "f3b6a2c6-7d92-42a9-9502-f9bb3f3e7825",
+      "name": "Loop Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Langkah 6: Code Node JavaScript. Menggabungkan img1-img4 ke dalam satu array, memfilter nilai null/undefined, lalu mengubahnya menjadi array objek {url, index} untuk diproses individual."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "8cc5523d-3911-4339-9389-80f0e5866a05",
+      "name": "Download Gambar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "notes": "Langkah 7: HTTP GET untuk mengunduh file gambar dari URL yang diperoleh dari Loop Image. Respons dikonfigurasi sebagai File dan disimpan dalam field bernama 'data' (binary)."
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "8085407373",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=🎨 Gambar AI berhasil dibuat!\n\n📝 Prompt: {{ $('Submit Text Prompt untuk Generate Gambar').item.json.prompt }}\n🔢 Gambar ke-{{ $('Loop Image').item.json.index }}\n\n✅ Generated by Kie AI via n8n"
+        }
+      },
+      "id": "655dc031-38d7-49bf-bd22-4d5045bdeda7",
+      "name": "Kirim Hasil Generate",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        0
+      ],
+      "webhookId": "6fd88d33-898f-44bc-8db5-3203945f542c",
+      "credentials": {
+        "telegramApi": {
+          "id": "v38guK5huOk3UnGd",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "Langkah 8: Node Telegram untuk operasi 'Send Photo'. Mengambil file binary dari field 'data' dan mengirimkannya ke Chat ID yang ditentukan. Caption berisi info prompt dan nomor gambar."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Submit Text Prompt untuk Generate Gambar": {
+      "main": [
+        [
+          {
+            "node": "Mengirim Image Generation Request ke Kie AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mengirim Image Generation Request ke Kie AI": {
+      "main": [
+        [
+          {
+            "node": "Menunggu Proses Generate Gambar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Menunggu Proses Generate Gambar": {
+      "main": [
+        [
+          {
+            "node": "Mendapatkan Status Generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mendapatkan Status Generate": {
+      "main": [
+        [
+          {
+            "node": "Check Jika Generate Sudah Selesai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Jika Generate Sudah Selesai": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menunggu Proses Generate Gambar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Image": {
+      "main": [
+        [
+          {
+            "node": "Download Gambar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Gambar": {
+      "main": [
+        [
+          {
+            "node": "Kirim Hasil Generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5f9bcdc2-aa9f-46e0-95f9-3973a6b3b8e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4ab2e820f183119a1cff325c1627456cb8157705ca3c559ce30aafaab9ef8286"
+  },
+  "id": "3bipgUYFdguJzgcm",
+  "tags": []
+}
