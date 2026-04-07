@@ -1,0 +1,334 @@
+{
+  "name": "Modul 6: Tugas 3_Pertemuan 2 _AI Video Generator_Arfan Khoeri",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.data.taskId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Submit Text Prompt untuk Generate Video').item.json.api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "36bef4a3-072b-4b57-be10-c46b7774298a",
+      "name": "Mendapatkan Status Generate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -464,
+        128
+      ],
+      "notes": "Langkah 3 (bagian polling loop): HTTP GET ke endpoint recordInfo untuk mengecek status tugas menggunakan taskId dari respons POST awal. api_key diambil dari node form pemicu."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-state-success",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "7a7a9d41-a9be-4b9e-acc1-c704235f1d09",
+      "name": "Check Jika Generate Sudah Selesai",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        128
+      ],
+      "notes": "Langkah 4: Gerbang logika yang memeriksa apakah field 'state' dalam data respons sama dengan 'success'. TRUE → lanjut ke ekstraksi URL. FALSE → kembali ke Wait (polling loop ulang)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil data utama dari node sebelumnya\nconst data = $json.data;\n\n// Siapkan variabel kosong untuk URL Video\nlet videoUrl = null;\n\nif (data && data.resultJson) {\n  // Parsing string JSON menjadi objek\n  const result = JSON.parse(data.resultJson);\n  \n  // Cek berbagai kemungkinan nama kolom URL (Video seringkali beda dengan Gambar)\n  if (result.resultUrls && result.resultUrls.length > 0) {\n    videoUrl = result.resultUrls[0];\n  } else if (result.url) {\n    videoUrl = result.url;\n  } else if (result.video_url) {\n    videoUrl = result.video_url;\n  }\n}\n\nreturn [{\n  videoUrl: videoUrl\n}];"
+      },
+      "id": "826e04ac-47c0-43b3-bfa2-d37fbe7a2cc7",
+      "name": "Parse Video URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Langkah 5: Code Node JavaScript. Mem-parsing field resultJson (berupa string JSON) dari respons API menjadi objek. Mengekstrak hingga 4 URL gambar dari array resultUrls."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.videoUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "34467a58-0e72-4e57-b574-d4a9ce68d1b3",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Langkah 7: HTTP GET untuk mengunduh file gambar dari URL yang diperoleh dari Loop Image. Respons dikonfigurasi sebagai File dan disimpan dalam field bernama 'data' (binary)."
+    },
+    {
+      "parameters": {
+        "name": "Video Topik 3.mp4",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "12AHtepSSYPX3n0FqqWHKhcOap-zszrsb",
+          "mode": "list",
+          "cachedResultName": "Nfa_Academy_Arfan",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/12AHtepSSYPX3n0FqqWHKhcOap-zszrsb"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a0e5ede8-e879-4fdf-892d-0ecad9d9611a",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "rG8jSZDajhiNsQJz",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Generate Video Konten Otomatis",
+        "formDescription": "Masukkan informasi dibawah ini untuk memulai proses generate video",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "prompt",
+              "fieldType": "textarea",
+              "placeholder": "Masukkan deskripsi atau instruksi di sini",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "img_url",
+              "placeholder": "https://example.com/image.jpg"
+            },
+            {
+              "fieldLabel": "task_type",
+              "fieldType": "password",
+              "placeholder": "image_generation",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "api_key",
+              "placeholder": "Masukkan API Key Kie AI kamu"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3b5299b5-0967-4392-9054-dd668a52c1c4",
+      "name": "Submit Text Prompt untuk Generate Video",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        128
+      ],
+      "webhookId": "373e9e16-7cee-48b8-a1ec-41b3f78bc54e",
+      "notes": "Langkah 1: Node Form sebagai pemicu awal. Pengguna mengisi prompt dan api_key melalui URL form yang digenerate n8n. Data ini digunakan di seluruh alur kerja."
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "5a35c5b6-f315-4cf5-96c8-353c3f47bb12",
+      "name": "Menunggu Proses Generation Video",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -704,
+        128
+      ],
+      "webhookId": "2ba3cadd-93a0-4a5d-b8ad-942f927e2c34",
+      "notes": "Langkah 3 (bagian polling loop): Memberikan jeda 10 detik agar server AI memiliki waktu memproses permintaan sebelum dicek statusnya kembali."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"grok-imagine/image-to-video\",\n  \"input\": {\n    \"image_urls\": [\n      \"{{ $json.img_url }}\"\n    ],\n    \"prompt\": {{ JSON.stringify($json.prompt) }},\n    \"mode\": \"normal\",\n    \"duration\": \"6\",\n    \"resolution\": \"480p\"\n  }\n}",
+        "options": {}
+      },
+      "id": "091c2aa4-e5bb-4098-9fad-a7f257341f75",
+      "name": "Mengirim Video Generation Request ke Kie AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -944,
+        128
+      ],
+      "notes": "Langkah 2: HTTP POST ke endpoint https://api.kie.ai/api/v1/jobs/createTask. Header Authorization menggunakan api_key dari form. Respons berisi taskId untuk polling."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Mendapatkan Status Generate": {
+      "main": [
+        [
+          {
+            "node": "Check Jika Generate Sudah Selesai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Jika Generate Sudah Selesai": {
+      "main": [
+        [
+          {
+            "node": "Parse Video URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menunggu Proses Generation Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Video URL": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Text Prompt untuk Generate Video": {
+      "main": [
+        [
+          {
+            "node": "Mengirim Video Generation Request ke Kie AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Menunggu Proses Generation Video": {
+      "main": [
+        [
+          {
+            "node": "Mendapatkan Status Generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mengirim Video Generation Request ke Kie AI": {
+      "main": [
+        [
+          {
+            "node": "Menunggu Proses Generation Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "31db7e6a-5f9e-437b-9c4b-60d02faeeff7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4ab2e820f183119a1cff325c1627456cb8157705ca3c559ce30aafaab9ef8286"
+  },
+  "id": "43PGq8mzXK73Chgu",
+  "tags": []
+}
