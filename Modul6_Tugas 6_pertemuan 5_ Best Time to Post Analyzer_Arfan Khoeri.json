@@ -1,0 +1,250 @@
+{
+  "name": "Modul6_Tugas 6_pertemuan 5_ Best Time to Post Analyzer_Arfan Khoeri",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -32
+      ],
+      "id": "81b0fe7c-5d21-4bd5-97b2-f14c325f1986",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "=1sACjik-3duZYiJVEbL1ei77ZUD4zuc2hnFtmtXMq5Vo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Data Posting",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sACjik-3duZYiJVEbL1ei77ZUD4zuc2hnFtmtXMq5Vo/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "291bbe6d-79c3-4841-bee4-d45f6281c2ad",
+      "name": "Baca Data Posting",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GLcblT1NlEdQVQyA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "=1sACjik-3duZYiJVEbL1ei77ZUD4zuc2hnFtmtXMq5Vo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1208065139,
+          "mode": "list",
+          "cachedResultName": "Hasil Analisis",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sACjik-3duZYiJVEbL1ei77ZUD4zuc2hnFtmtXMq5Vo/edit#gid=1208065139"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        -32
+      ],
+      "id": "75f9c293-75d4-4acc-9dcc-52a4874048e0",
+      "name": "Hapus Hasil Lama",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GLcblT1NlEdQVQyA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "=1sACjik-3duZYiJVEbL1ei77ZUD4zuc2hnFtmtXMq5Vo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1208065139,
+          "mode": "list",
+          "cachedResultName": "Hasil Analisis",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sACjik-3duZYiJVEbL1ei77ZUD4zuc2hnFtmtXMq5Vo/edit#gid=1208065139"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        -32
+      ],
+      "id": "0be6dcc0-14d7-4a10-8962-280c84a8407c",
+      "name": "Tulis Hasil Analisis",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GLcblT1NlEdQVQyA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mengemas Insight - Versi Perbaikan untuk Arfan Khoeri\nconst items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { message: '❌ Tidak ada data untuk dianalisis' } }];\n}\n\n// 1. Kelompokkan data berdasarkan Jam Posting (karena di Sheet ada banyak data per jam)\nconst groups = {};\n\nitems.forEach(item => {\n  const data = item.json;\n  const jam = data['Jam Posting'];\n  \n  if (!groups[jam]) {\n    groups[jam] = {\n      jam: jam,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      platform: data['Platform'] || 'Instagram',\n      count: 0\n    };\n  }\n  \n  // Mengambil angka dari Sheets (memastikan bukan teks kosong)\n  groups[jam].likes += parseFloat(data['Likes'] || 0);\n  groups[jam].comments += parseFloat(data['Comments'] || 0);\n  groups[jam].shares += parseFloat(data['Shares'] || 0);\n  groups[jam].count += 1;\n});\n\n// 2. Hitung Rata-rata & Engagement Score (Rumus Bobot NF: L + C*2 + S*3)\nconst results = Object.values(groups).map(g => {\n  const avgLikes = g.likes / g.count;\n  const avgComments = g.comments / g.count;\n  const avgShares = g.shares / g.count;\n  const score = avgLikes + (avgComments * 2) + (avgShares * 3);\n  \n  return {\n    jam: g.jam,\n    score: score.toFixed(0),\n    avgLikes: avgLikes.toFixed(0),\n    avgComments: avgComments.toFixed(0),\n    avgShares: avgShares.toFixed(0),\n    platform: g.platform,\n    totalPost: g.count\n  };\n});\n\n// 3. Urutkan berdasarkan Skor Tertinggi (Ranking)\nresults.sort((a, b) => b.score - a.score);\n\n// 4. Format Pesan Telegram (Copy-paste style NF Academy)\nlet message = '📊 *HASIL ANALISIS WAKTU POSTING TERBAIK*\\n';\nmessage += '━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n';\nmessage += '🏆 *TOP 5 JAM TERBAIK*:\\n\\n';\n\nresults.slice(0, 5).forEach((item, index) => {\n  const medal = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : (index + 1) + '.' ));\n  \n  message += `${medal} *JAM ${item.jam}:00*\\n`;\n  message += `📈 Avg Engagement: *${item.score}*\\n`;\n  message += `❤️ Avg Likes: ${item.avgLikes}\\n`;\n  message += `💬 Avg Comments: ${item.avgComments}\\n`;\n  message += `🔄 Avg Shares: ${item.avgShares}\\n`;\n  message += `📱 Platform: ${item.platform}\\n`;\n  message += `📊 Total Post: ${item.totalPost} post\\n`;\n  message += `⭐ SANGAT DIREKOMENDASIKAN\\n\\n`;\n});\n\nmessage += '🚀 _Gunakan insight ini untuk meningkatkan jangkauan konten Kaffe Tropikal Healing!_';\n\nreturn [{ json: { message } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -32
+      ],
+      "id": "ff5796e7-a2e6-411e-a279-7df653832a60",
+      "name": "Format Pesan Telegram"
+    },
+    {
+      "parameters": {
+        "chatId": "8085407373",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        -32
+      ],
+      "id": "597a91fd-db05-4dac-af66-bd17654e727e",
+      "name": "Send a text message",
+      "webhookId": "5bf26ebf-cc2c-4c55-bdd8-9bc44d02293c",
+      "credentials": {
+        "telegramApi": {
+          "id": "v38guK5huOk3UnGd",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Ambil semua data dari input (Google Sheets)\nconst items = $input.all();\n\n// 2. Looping untuk menghitung engagement di tiap baris\nconst result = items.map(item => {\n  // Ambil data dari kolom (pastikan nama kolom sama persis dengan di Sheets)\n  const likes = item.json['Likes'] || 0;\n  const comments = item.json['Comments'] || 0;\n  const shares = item.json['Shares'] || 0;\n\n  // Rumus engagement bobot NF Academy: likes + (comments * 2) + (shares * 3)\n  const engagementScore = likes + (comments * 2) + (shares * 3);\n\n  // Simpan hasil hitungan ke kolom baru bernama 'engagementScore'\n  item.json.engagementScore = engagementScore;\n  \n  return item;\n});\n\n// 3. Urutkan dari skor tertinggi ke terendah (Ranking)\nresult.sort((a, b) => b.json.engagementScore - a.json.engagementScore);\n\n// 4. Kembalikan data agar bisa lanjut ke node berikutnya\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -32
+      ],
+      "id": "f6dbbf89-59c7-42eb-b280-773757eed4db",
+      "name": "Analisis Waktu Terbaik"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Baca Data Posting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Data Posting": {
+      "main": [
+        [
+          {
+            "node": "Analisis Waktu Terbaik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hapus Hasil Lama": {
+      "main": [
+        [
+          {
+            "node": "Tulis Hasil Analisis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tulis Hasil Analisis": {
+      "main": [
+        [
+          {
+            "node": "Format Pesan Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pesan Telegram": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisis Waktu Terbaik": {
+      "main": [
+        [
+          {
+            "node": "Hapus Hasil Lama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5d4c8456-25a0-4cb6-b0b8-58412a156355",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4ab2e820f183119a1cff325c1627456cb8157705ca3c559ce30aafaab9ef8286"
+  },
+  "id": "dQoVEUYNmLIfCZuF",
+  "tags": []
+}
